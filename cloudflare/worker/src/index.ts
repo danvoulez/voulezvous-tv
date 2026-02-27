@@ -2,12 +2,22 @@ interface Env {
   DB: D1Database;
   CONTROL_TOKEN: string;
   CONTROL_SECRET: string;
+  PUBLIC_STREAM_URL?: string;
 }
 
 export default {
   async fetch(request: Request, env: Env): Promise<Response> {
     const url = new URL(request.url);
     const path = normalizePath(url.pathname);
+
+    if (request.method === "GET" && path === "/") {
+      return new Response(publicPageHtml(env.PUBLIC_STREAM_URL), {
+        headers: {
+          "content-type": "text/html; charset=utf-8",
+          "cache-control": "public, max-age=120",
+        },
+      });
+    }
 
     if (request.method === "GET" && path === "/v1/status") {
       const row = await env.DB.prepare("SELECT payload_json FROM status_snapshots WHERE id = 1").first<{ payload_json: string }>();
@@ -85,6 +95,166 @@ function normalizePath(pathname: string): string {
     return pathname.slice("/vvtv".length);
   }
   return pathname;
+}
+
+function publicPageHtml(streamUrl?: string): string {
+  const src = streamUrl || "https://core.voulezvous.tv/hls/index.m3u8";
+  return `<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
+  <title>voulezvous.tv</title>
+  <style>
+    :root {
+      --bg: #000000;
+      --panel: #1a1a1a;
+      --panel-border: #2e2e2e;
+      --pink: #ff1684;
+      --text: #f6f6f6;
+    }
+    * { box-sizing: border-box; }
+    html, body {
+      margin: 0;
+      width: 100%;
+      height: 100%;
+      background: var(--bg);
+      color: var(--text);
+      font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
+    }
+    .page {
+      min-height: 100%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 3vh 3vw;
+    }
+    .stack {
+      width: min(94vw, 1800px);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 2vh;
+    }
+    .player-shell {
+      width: 100%;
+      aspect-ratio: 16 / 9;
+      background: var(--panel);
+      border: 1px solid var(--panel-border);
+      border-radius: 18px;
+      overflow: hidden;
+      position: relative;
+      box-shadow: 0 20px 48px rgba(0, 0, 0, 0.58);
+      touch-action: manipulation;
+    }
+    video {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      background: #111;
+    }
+    .overlay {
+      position: absolute;
+      inset: 0;
+      display: grid;
+      place-items: center;
+      background: linear-gradient(to bottom, rgba(0,0,0,0.28), rgba(0,0,0,0.46));
+      transition: opacity .2s ease;
+      cursor: pointer;
+    }
+    .overlay.hidden {
+      opacity: 0;
+      pointer-events: none;
+    }
+    .play {
+      width: 18%;
+      min-width: 120px;
+      height: 50%;
+      border-radius: 999px;
+      border: 0;
+      background: rgba(255, 255, 255, 0.12);
+      backdrop-filter: blur(8px);
+      color: #fff;
+      font-size: clamp(2.4rem, 6vw, 5.5rem);
+      line-height: 1;
+      display: grid;
+      place-items: center;
+      padding-left: 0.14em;
+    }
+    .brand {
+      letter-spacing: 0.12em;
+      text-transform: lowercase;
+      font-size: clamp(1.05rem, 2.2vw, 2.2rem);
+      font-weight: 700;
+      color: var(--pink);
+      text-shadow: 0 0 12px rgba(255, 22, 132, 0.45);
+      user-select: none;
+    }
+    @media (max-width: 900px) {
+      .page { padding: 2vh 2vw; }
+      .player-shell { border-radius: 10px; }
+      .play { min-width: 88px; }
+    }
+  </style>
+</head>
+<body>
+  <main class="page">
+    <section class="stack">
+      <div class="player-shell" id="shell">
+        <video id="stream" preload="metadata" playsinline webkit-playsinline></video>
+        <div class="overlay" id="overlay" aria-label="Play stream">
+          <button class="play" id="playBtn" aria-label="Play">▶</button>
+        </div>
+      </div>
+      <div class="brand">voulezvous</div>
+    </section>
+  </main>
+  <script src="https://cdn.jsdelivr.net/npm/hls.js@1.5.20/dist/hls.min.js"></script>
+  <script>
+    const STREAM_URL = ${JSON.stringify(src)};
+    const shell = document.getElementById("shell");
+    const video = document.getElementById("stream");
+    const overlay = document.getElementById("overlay");
+    const playBtn = document.getElementById("playBtn");
+
+    function loadStream() {
+      if (window.Hls && window.Hls.isSupported()) {
+        const hls = new Hls({ lowLatencyMode: true, enableWorker: true });
+        hls.loadSource(STREAM_URL);
+        hls.attachMedia(video);
+      } else {
+        video.src = STREAM_URL;
+      }
+    }
+
+    function showOverlay(show) {
+      overlay.classList.toggle("hidden", !show);
+    }
+
+    async function goLive() {
+      if (!document.fullscreenElement) {
+        try { await shell.requestFullscreen(); } catch (_) {}
+      }
+      try {
+        await video.play();
+        showOverlay(false);
+      } catch (_) {
+        showOverlay(true);
+      }
+    }
+
+    shell.addEventListener("mouseenter", () => { video.controls = true; });
+    shell.addEventListener("mouseleave", () => { video.controls = false; });
+    video.addEventListener("pause", () => showOverlay(true));
+    video.addEventListener("playing", () => showOverlay(false));
+    overlay.addEventListener("click", goLive);
+    playBtn.addEventListener("click", goLive);
+
+    loadStream();
+    showOverlay(true);
+  </script>
+</body>
+</html>`;
 }
 
 async function verifyControlAuth(request: Request, env: Env, body: string): Promise<Response | null> {
