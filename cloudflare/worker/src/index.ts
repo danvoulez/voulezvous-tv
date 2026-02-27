@@ -7,8 +7,9 @@ interface Env {
 export default {
   async fetch(request: Request, env: Env): Promise<Response> {
     const url = new URL(request.url);
+    const path = normalizePath(url.pathname);
 
-    if (request.method === "GET" && url.pathname === "/v1/status") {
+    if (request.method === "GET" && path === "/v1/status") {
       const row = await env.DB.prepare("SELECT payload_json FROM status_snapshots WHERE id = 1").first<{ payload_json: string }>();
       if (!row) {
         return Response.json({ state: "RUNNING", buffer_minutes: 60, source: "default" });
@@ -16,7 +17,7 @@ export default {
       return Response.json(JSON.parse(row.payload_json));
     }
 
-    if (request.method === "GET" && url.pathname === "/v1/reports/daily") {
+    if (request.method === "GET" && path === "/v1/reports/daily") {
       const date = url.searchParams.get("date");
       if (!date) return jsonError("missing date", 400);
       const row = await env.DB.prepare("SELECT payload_json FROM daily_reports WHERE date = ?1").bind(date).first<{ payload_json: string }>();
@@ -24,7 +25,7 @@ export default {
       return Response.json(JSON.parse(row.payload_json));
     }
 
-    if (request.method === "GET" && url.pathname === "/v1/reports/weekly") {
+    if (request.method === "GET" && path === "/v1/reports/weekly") {
       const week = url.searchParams.get("week");
       if (!week) return jsonError("missing week", 400);
       const row = await env.DB.prepare("SELECT payload_json FROM weekly_reports WHERE week = ?1").bind(week).first<{ payload_json: string }>();
@@ -32,12 +33,12 @@ export default {
       return Response.json(JSON.parse(row.payload_json));
     }
 
-    if (request.method === "POST" && url.pathname.startsWith("/v1/ingest/")) {
+    if (request.method === "POST" && path.startsWith("/v1/ingest/")) {
       const bodyText = await request.text();
       const authErr = await verifyControlAuth(request, env, bodyText);
       if (authErr) return authErr;
 
-      if (url.pathname === "/v1/ingest/status") {
+      if (path === "/v1/ingest/status") {
         await env.DB
           .prepare(
             "INSERT INTO status_snapshots(id, payload_json, updated_at) VALUES(1, ?1, datetime('now')) ON CONFLICT(id) DO UPDATE SET payload_json = excluded.payload_json, updated_at = excluded.updated_at"
@@ -47,7 +48,7 @@ export default {
         return Response.json({ ok: true, kind: "status" });
       }
 
-      if (url.pathname === "/v1/ingest/daily") {
+      if (path === "/v1/ingest/daily") {
         const payload = JSON.parse(bodyText) as { date?: string };
         if (!payload.date) return jsonError("daily report missing date", 400);
         await env.DB
@@ -59,7 +60,7 @@ export default {
         return Response.json({ ok: true, kind: "daily" });
       }
 
-      if (url.pathname === "/v1/ingest/weekly") {
+      if (path === "/v1/ingest/weekly") {
         const payload = JSON.parse(bodyText) as { week?: string };
         if (!payload.week) return jsonError("weekly report missing week", 400);
         await env.DB
@@ -77,6 +78,14 @@ export default {
     return jsonError("not found", 404);
   },
 };
+
+function normalizePath(pathname: string): string {
+  if (pathname === "/vvtv") return "/";
+  if (pathname.startsWith("/vvtv/")) {
+    return pathname.slice("/vvtv".length);
+  }
+  return pathname;
+}
 
 async function verifyControlAuth(request: Request, env: Env, body: string): Promise<Response | null> {
   const auth = request.headers.get("authorization") || "";

@@ -2,7 +2,7 @@
 
 ## Worker + D1 setup
 
-1. Configure `cloudflare/worker/wrangler.toml` with real D1 `database_id`.
+1. Configure `cloudflare/worker/wrangler.toml` with real D1 `database_id` and route.
 2. Apply migration:
 
 ```bash
@@ -23,11 +23,16 @@ npx wrangler secret put CONTROL_SECRET
 npx wrangler deploy
 ```
 
+Current production route:
+
+- `https://voulezvous.tv/vvtv/*`
+- health read: `GET https://voulezvous.tv/vvtv/v1/status`
+
 ## LAB orchestrator -> Cloud sync
 
 Set environment in the LAB process:
 
-- `VVTV_CLOUDFLARE_BASE_URL=https://<worker-domain>`
+- `VVTV_CLOUDFLARE_BASE_URL=https://voulezvous.tv/vvtv`
 - `VVTV_CLOUDFLARE_TOKEN=<token>`
 - `VVTV_CLOUDFLARE_SECRET=<secret>`
 
