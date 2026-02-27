@@ -19,10 +19,22 @@ Forcar nightly e imprimir ultimo export de auditoria:
 scripts/vvtv-runbook.sh export-audits
 ```
 
+Rotacionar chave local de backup:
+
+```bash
+scripts/vvtv-runbook.sh backup-key-rotate
+```
+
 Backup de metadados (state + OwnerCard):
 
 ```bash
 scripts/vvtv-runbook.sh backup-metadata
+```
+
+Backup de metadados criptografado:
+
+```bash
+scripts/vvtv-runbook.sh backup-metadata-secure
 ```
 
 Restore de metadados:
@@ -31,10 +43,22 @@ Restore de metadados:
 scripts/vvtv-runbook.sh restore-metadata runtime/backups/<timestamp>
 ```
 
+Restore de metadados criptografado:
+
+```bash
+scripts/vvtv-runbook.sh restore-metadata-secure runtime/backups/<timestamp>
+```
+
 Verificar backup sem restaurar:
 
 ```bash
 scripts/vvtv-runbook.sh verify-backup runtime/backups/<timestamp>
+```
+
+Verificar backup criptografado:
+
+```bash
+scripts/vvtv-runbook.sh verify-backup-secure runtime/backups/<timestamp>
 ```
 
 Ativar emergencia:

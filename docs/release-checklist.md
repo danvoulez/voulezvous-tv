@@ -17,9 +17,13 @@
 
 - [ ] `scripts/vvtv-runbook.sh force-nightly` succeeds
 - [ ] `scripts/vvtv-runbook.sh export-audits` returns a file path
+- [ ] `scripts/vvtv-runbook.sh backup-key-rotate` rotates key and archives old key
 - [ ] `scripts/vvtv-runbook.sh backup-metadata` creates `runtime/backups/<timestamp>/manifest.json`
+- [ ] `scripts/vvtv-runbook.sh backup-metadata-secure` creates encrypted payload
 - [ ] `scripts/vvtv-runbook.sh verify-backup <backup_dir>` validates checksums
+- [ ] `scripts/vvtv-runbook.sh verify-backup-secure <backup_dir>` validates encrypted backup
 - [ ] `scripts/vvtv-runbook.sh restore-metadata <backup_dir>` succeeds in maintenance window
+- [ ] `scripts/vvtv-runbook.sh restore-metadata-secure <backup_dir>` succeeds in maintenance window
 - [ ] `scripts/vvtv-runbook.sh emergency-on` and `emergency-off` both succeed
 
 ## Soak run
@@ -42,6 +46,17 @@ VVTV_CANARY_SOAK_HOURS=1 scripts/vvtv-canary.sh
 ```
 
 - [ ] Verify `runtime/canary/<timestamp>/result.env` has `status=PASS`
+
+## Promotion gate
+
+- [ ] Start control API and verify alerts endpoint is reachable
+- [ ] Execute promotion gate:
+
+```bash
+scripts/vvtv-promote.sh runtime/canary/<timestamp>/result.env
+```
+
+- [ ] Verify promotion record in `runtime/releases/promotions/promotion-<ts>.env`
 
 ## Cloudflare integration
 

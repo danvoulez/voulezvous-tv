@@ -81,11 +81,15 @@ Setup completo: `docs/cloudflare-integration.md`.
 Script operacional: `scripts/vvtv-runbook.sh`
 
 Exemplos:
+- `scripts/vvtv-runbook.sh backup-key-rotate`
 - `scripts/vvtv-runbook.sh force-nightly`
 - `scripts/vvtv-runbook.sh export-audits`
 - `scripts/vvtv-runbook.sh backup-metadata`
+- `scripts/vvtv-runbook.sh backup-metadata-secure`
 - `scripts/vvtv-runbook.sh verify-backup runtime/backups/<timestamp>`
+- `scripts/vvtv-runbook.sh verify-backup-secure runtime/backups/<timestamp>`
 - `scripts/vvtv-runbook.sh restore-metadata runtime/backups/<timestamp>`
+- `scripts/vvtv-runbook.sh restore-metadata-secure runtime/backups/<timestamp>`
 - `scripts/vvtv-runbook.sh emergency-on`
 - `scripts/vvtv-runbook.sh emergency-off`
 
@@ -119,6 +123,14 @@ Dry run curto:
 
 ```bash
 VVTV_CANARY_SOAK_HOURS=0 VVTV_CANARY_SOAK_MAX_SAMPLES=3 VVTV_CANARY_SOAK_INTERVAL_SECS=10 scripts/vvtv-canary.sh
+```
+
+## Promotion gate
+
+Promove apenas com canary `PASS` e sem alertas `high/critical`:
+
+```bash
+scripts/vvtv-promote.sh runtime/canary/<timestamp>/result.env
 ```
 
 ## Recovery (SQLite)
