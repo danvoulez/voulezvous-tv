@@ -5,6 +5,7 @@ account_id = "1f43a14fe5bb62b97e7262c5b6b7c476"
 
 routes = [
   { pattern = "api.voulezvous.tv/*", zone_name = "voulezvous.tv" },
+  { pattern = "voulezvous.tv/", zone_name = "voulezvous.tv" },
   { pattern = "voulezvous.tv/vvtv/*", zone_name = "voulezvous.tv" }
 ]
 
