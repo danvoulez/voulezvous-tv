@@ -19,6 +19,10 @@
 ## Backup/restore
 - Rotacionar chave local de criptografia:
   - `scripts/vvtv-runbook.sh backup-key-rotate`
+- Garantir politica de idade da chave (rotaciona se vencida):
+  - `scripts/vvtv-runbook.sh backup-key-ensure`
+- Limpar chaves antigas de arquivo:
+  - `scripts/vvtv-runbook.sh backup-key-prune`
 - Gerar snapshot completo (`state.db` + `OwnerCard` + `manifest` com SHA-256):
   - `scripts/vvtv-runbook.sh backup-metadata`
 - Gerar snapshot criptografado em repouso:
@@ -40,6 +44,8 @@
 ## Canary e rollback
 - Rodar canary com backup automatico e rollback em falha:
   - `VVTV_CANARY_SOAK_HOURS=1 scripts/vvtv-canary.sh`
+- Auto-promote opcional no mesmo fluxo:
+  - `VVTV_CANARY_AUTO_PROMOTE=1 scripts/vvtv-canary.sh`
 - Promover apenas se canary PASS e sem alertas high/critical:
   - `scripts/vvtv-promote.sh runtime/canary/<timestamp>/result.env`
 - Artefatos:

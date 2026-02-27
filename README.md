@@ -82,6 +82,8 @@ Script operacional: `scripts/vvtv-runbook.sh`
 
 Exemplos:
 - `scripts/vvtv-runbook.sh backup-key-rotate`
+- `scripts/vvtv-runbook.sh backup-key-ensure`
+- `scripts/vvtv-runbook.sh backup-key-prune`
 - `scripts/vvtv-runbook.sh force-nightly`
 - `scripts/vvtv-runbook.sh export-audits`
 - `scripts/vvtv-runbook.sh backup-metadata`
@@ -117,6 +119,12 @@ Script de canary com rollback automatico:
 
 ```bash
 VVTV_CANARY_SOAK_HOURS=1 scripts/vvtv-canary.sh
+```
+
+Canary com promote automatico (gate embutido):
+
+```bash
+VVTV_CANARY_AUTO_PROMOTE=1 VVTV_CANARY_SOAK_HOURS=1 scripts/vvtv-canary.sh
 ```
 
 Dry run curto:

@@ -8,6 +8,8 @@ CONTROL_SECRET="${VVTV_CONTROL_SECRET:-dev-secret}"
 BACKUP_KEY_DIR="${VVTV_BACKUP_KEY_DIR:-$ROOT_DIR/runtime/keys}"
 BACKUP_KEY_FILE="${VVTV_BACKUP_KEY_FILE:-$BACKUP_KEY_DIR/current.key}"
 BACKUP_KEY_ID_FILE="${VVTV_BACKUP_KEY_ID_FILE:-$BACKUP_KEY_DIR/current.key.id}"
+BACKUP_KEY_MAX_AGE_DAYS="${VVTV_BACKUP_KEY_MAX_AGE_DAYS:-30}"
+BACKUP_KEY_ARCHIVE_RETENTION_DAYS="${VVTV_BACKUP_KEY_ARCHIVE_RETENTION_DAYS:-180}"
 
 usage() {
   cat <<USAGE
@@ -17,6 +19,8 @@ Commands:
   force-nightly           Run orchestrator once with forced nightly maintenance
   export-audits           Force nightly and print latest audit export file
   backup-key-rotate       Rotate local backup encryption key
+  backup-key-ensure       Rotate key only if missing/expired by age policy
+  backup-key-prune        Delete archived keys older than retention policy
   backup-metadata         Snapshot state.db + OwnerCard with manifest checksum
   backup-metadata-secure  Snapshot + encrypt backup payload at rest
   verify-backup           Verify backup manifest/checksums without restoring
@@ -91,6 +95,57 @@ backup_key_rotate() {
   echo "backup_key_file=$BACKUP_KEY_FILE"
 }
 
+file_mtime_epoch() {
+  local path="$1"
+  if stat -f %m "$path" >/dev/null 2>&1; then
+    stat -f %m "$path"
+  else
+    stat -c %Y "$path"
+  fi
+}
+
+backup_key_ensure() {
+  local now age_days mtime
+  now="$(date +%s)"
+
+  if [[ ! -f "$BACKUP_KEY_FILE" || ! -f "$BACKUP_KEY_ID_FILE" ]]; then
+    backup_key_rotate
+    echo "backup_key_rotated=true"
+    echo "backup_key_rotate_reason=missing"
+    return 0
+  fi
+
+  mtime="$(file_mtime_epoch "$BACKUP_KEY_FILE")"
+  age_days="$(( (now - mtime) / 86400 ))"
+  if (( age_days >= BACKUP_KEY_MAX_AGE_DAYS )); then
+    backup_key_rotate
+    echo "backup_key_rotated=true"
+    echo "backup_key_rotate_reason=expired"
+    echo "backup_key_age_days=$age_days"
+    return 0
+  fi
+
+  echo "backup_key_rotated=false"
+  echo "backup_key_id=$(cat "$BACKUP_KEY_ID_FILE")"
+  echo "backup_key_age_days=$age_days"
+}
+
+backup_key_prune() {
+  local archive_dir deleted_count
+  archive_dir="$BACKUP_KEY_DIR/archive"
+  deleted_count=0
+  mkdir -p "$archive_dir"
+
+  while IFS= read -r key_file; do
+    [[ -z "$key_file" ]] && continue
+    rm -f "$key_file"
+    deleted_count=$((deleted_count + 1))
+  done < <(find "$archive_dir" -type f -name '*.key' -mtime "+$BACKUP_KEY_ARCHIVE_RETENTION_DAYS" 2>/dev/null || true)
+
+  echo "backup_key_pruned=$deleted_count"
+  echo "backup_key_archive_retention_days=$BACKUP_KEY_ARCHIVE_RETENTION_DAYS"
+}
+
 ensure_backup_key() {
   if [[ ! -f "$BACKUP_KEY_FILE" ]]; then
     echo "missing backup key file: $BACKUP_KEY_FILE" >&2
@@ -100,6 +155,7 @@ ensure_backup_key() {
 }
 
 backup_metadata_secure() {
+  backup_key_ensure >/dev/null
   ensure_backup_key
 
   local output backup_dir key_id tar_plain enc_file
@@ -268,6 +324,12 @@ main() {
       ;;
     backup-key-rotate)
       backup_key_rotate
+      ;;
+    backup-key-ensure)
+      backup_key_ensure
+      ;;
+    backup-key-prune)
+      backup_key_prune
       ;;
     backup-metadata)
       backup_metadata

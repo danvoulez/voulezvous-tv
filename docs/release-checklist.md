@@ -18,6 +18,8 @@
 - [ ] `scripts/vvtv-runbook.sh force-nightly` succeeds
 - [ ] `scripts/vvtv-runbook.sh export-audits` returns a file path
 - [ ] `scripts/vvtv-runbook.sh backup-key-rotate` rotates key and archives old key
+- [ ] `scripts/vvtv-runbook.sh backup-key-ensure` enforces max key age policy
+- [ ] `scripts/vvtv-runbook.sh backup-key-prune` removes old archived keys
 - [ ] `scripts/vvtv-runbook.sh backup-metadata` creates `runtime/backups/<timestamp>/manifest.json`
 - [ ] `scripts/vvtv-runbook.sh backup-metadata-secure` creates encrypted payload
 - [ ] `scripts/vvtv-runbook.sh verify-backup <backup_dir>` validates checksums
@@ -46,6 +48,7 @@ VVTV_CANARY_SOAK_HOURS=1 scripts/vvtv-canary.sh
 ```
 
 - [ ] Verify `runtime/canary/<timestamp>/result.env` has `status=PASS`
+- [ ] Optional: `VVTV_CANARY_AUTO_PROMOTE=1 scripts/vvtv-canary.sh` ends with `promotion_status=PROMOTED`
 
 ## Promotion gate
 

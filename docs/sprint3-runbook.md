@@ -25,6 +25,18 @@ Rotacionar chave local de backup:
 scripts/vvtv-runbook.sh backup-key-rotate
 ```
 
+Garantir chave (rotaciona se expirada):
+
+```bash
+scripts/vvtv-runbook.sh backup-key-ensure
+```
+
+Limpar chaves antigas arquivadas:
+
+```bash
+scripts/vvtv-runbook.sh backup-key-prune
+```
+
 Backup de metadados (state + OwnerCard):
 
 ```bash
@@ -83,4 +95,10 @@ Canary com rollback automatico:
 
 ```bash
 VVTV_CANARY_SOAK_HOURS=1 scripts/vvtv-canary.sh
+```
+
+Canary com promote automatico:
+
+```bash
+VVTV_CANARY_AUTO_PROMOTE=1 VVTV_CANARY_SOAK_HOURS=1 scripts/vvtv-canary.sh
 ```
