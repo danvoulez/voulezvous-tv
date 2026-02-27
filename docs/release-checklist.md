@@ -1,0 +1,45 @@
+# Release Checklist (Sprint 3)
+
+## Build and tests
+
+- [ ] `cargo test` green
+- [ ] `cargo run -p vvtv-orchestrator` starts and processes at least one commit window
+- [ ] `cargo run -p vvtv-control-api` serves `/v1/status`, `/metrics`, `/v1/alerts`
+
+## Security and secrets
+
+- [ ] `VVTV_ENV=production` configured in runtime environment
+- [ ] Non-dev secrets configured (no `dev-token`/`dev-secret`)
+- [ ] Cloudflare credentials configured if sync is enabled
+- [ ] Control API auth verified with signed request
+
+## Operational readiness
+
+- [ ] `scripts/vvtv-runbook.sh force-nightly` succeeds
+- [ ] `scripts/vvtv-runbook.sh export-audits` returns a file path
+- [ ] `scripts/vvtv-runbook.sh backup-metadata` creates `runtime/backups/<timestamp>/manifest.json`
+- [ ] `scripts/vvtv-runbook.sh restore-metadata <backup_dir>` succeeds in maintenance window
+- [ ] `scripts/vvtv-runbook.sh emergency-on` and `emergency-off` both succeed
+
+## Soak run
+
+- [ ] Execute 24h soak:
+
+```bash
+VVTV_SOAK_HOURS=24 VVTV_SOAK_INTERVAL_SECS=60 scripts/vvtv-soak.sh
+```
+
+- [ ] Verify `runtime/soak/<timestamp>/summary.txt` with `verdict=PASS`
+- [ ] Attach soak `summary.txt`, `status-samples.log`, `metrics-samples.log`, `alerts-samples.log` to release artifact
+
+## Cloudflare integration
+
+- [ ] D1 migration applied (`cloudflare/worker/migrations/0001_init.sql`)
+- [ ] Worker deployed
+- [ ] Orchestrator cloud sync variables configured
+- [ ] Confirm Worker serves latest daily/weekly reports from D1
+
+## Go/No-Go criteria
+
+Go if all items above pass and no critical/high alert remains active.
+No-Go if any soak failure, auth failure, or stream continuity regression is observed.

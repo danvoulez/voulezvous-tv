@@ -1,0 +1,12 @@
+name = "vvtv-control-worker"
+main = "src/index.ts"
+compatibility_date = "2026-02-27"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "vvtv-control"
+database_id = "REPLACE_ME"
+
+[vars]
+CONTROL_TOKEN = "set-me"
+CONTROL_SECRET = "set-me"

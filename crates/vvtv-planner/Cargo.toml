@@ -1,0 +1,12 @@
+[package]
+name = "vvtv-planner"
+version = "0.1.0"
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+
+[dependencies]
+vvtv-types = { path = "../vvtv-types" }
+
+[lints]
+workspace = true

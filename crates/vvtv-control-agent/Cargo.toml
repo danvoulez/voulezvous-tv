@@ -1,0 +1,21 @@
+[package]
+name = "vvtv-control-agent"
+version = "0.1.0"
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+
+[dependencies]
+anyhow.workspace = true
+chrono.workspace = true
+hmac = "0.12"
+parking_lot.workspace = true
+reqwest.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+sha2 = "0.10"
+tokio.workspace = true
+vvtv-types = { path = "../vvtv-types" }
+
+[lints]
+workspace = true

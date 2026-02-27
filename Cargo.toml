@@ -1,0 +1,47 @@
+[workspace]
+resolver = "2"
+members = [
+  "apps/vvtv-admin",
+  "apps/vvtv-orchestrator",
+  "apps/vvtv-control-api",
+  "crates/vvtv-types",
+  "crates/vvtv-config",
+  "crates/vvtv-audit",
+  "crates/vvtv-discovery",
+  "crates/vvtv-planner",
+  "crates/vvtv-fetcher",
+  "crates/vvtv-prep",
+  "crates/vvtv-queue",
+  "crates/vvtv-stream",
+  "crates/vvtv-curator",
+  "crates/vvtv-nightly",
+  "crates/vvtv-control-agent", "crates/vvtv-store",
+]
+
+[workspace.package]
+edition = "2024"
+rust-version = "1.85"
+license = "MIT"
+
+[workspace.dependencies]
+anyhow = "1"
+axum = { version = "0.8", features = ["macros"] }
+chrono = { version = "0.4", features = ["serde"] }
+parking_lot = "0.12"
+rand = "0.9"
+reqwest = { version = "0.12", default-features = false, features = ["json", "rustls-tls"] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+serde_yaml = "0.9"
+thiserror = "2"
+tokio = { version = "1", features = ["rt-multi-thread", "macros", "time", "sync", "signal"] }
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["fmt", "json", "env-filter"] }
+uuid = { version = "1", features = ["v4", "serde"] }
+
+[workspace.lints.rust]
+unsafe_code = "warn"
+
+[workspace.lints.clippy]
+all = "warn"
+pedantic = "warn"

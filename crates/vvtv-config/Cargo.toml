@@ -1,0 +1,15 @@
+[package]
+name = "vvtv-config"
+version = "0.1.0"
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+
+[dependencies]
+anyhow.workspace = true
+parking_lot.workspace = true
+serde_yaml.workspace = true
+vvtv-types = { path = "../vvtv-types" }
+
+[lints]
+workspace = true

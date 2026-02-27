@@ -1,0 +1,38 @@
+schema_version: 1
+editorial_profile:
+  target_avg_duration_sec: 900
+  max_consecutive_same_theme: 2
+  min_unique_themes_per_block: 3
+search_policy:
+  allowlist_domains:
+    - "example-source-a.com"
+    - "example-source-b.com"
+  blacklist_domains:
+    - "bad-domain.com"
+  blocked_keywords:
+    - "forbidden"
+schedule_policy:
+  planning_horizon_hours: 24
+  commit_lead_hours: 4
+  commit_interval_minutes: 30
+  buffer_target_minutes: 60
+  buffer_critical_minutes: 20
+quality_policy:
+  min_resolution_height: 720
+  target_audio_lufs: -16.0
+  max_audio_deviation_lufs: 2.5
+music_policy:
+  preferred_moods:
+    - "night"
+    - "energetic"
+  block_music_ratio: 0.2
+curator_policy:
+  auto_apply: true
+  min_confidence: 0.75
+  max_reorders_per_hour: 4
+safety_policy:
+  require_hd_playback_confirmation: true
+  reject_suspicious_watermark: true
+autotune_policy:
+  max_daily_adjustment_pct: 5.0
+  enabled: true
