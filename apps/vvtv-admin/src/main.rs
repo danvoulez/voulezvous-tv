@@ -34,6 +34,11 @@ struct RestoreOptions {
     force: bool,
 }
 
+#[derive(Debug, Clone)]
+struct VerifyOptions {
+    backup_dir: PathBuf,
+}
+
 fn main() -> Result<()> {
     let mut args = env::args().skip(1);
     let cmd = args.next().unwrap_or_default();
@@ -41,6 +46,7 @@ fn main() -> Result<()> {
     match cmd.as_str() {
         "backup" => run_backup(parse_backup_args(args.collect())?),
         "restore" => run_restore(parse_restore_args(args.collect())?),
+        "verify" => run_verify(parse_verify_args(args.collect())?),
         _ => {
             print_usage();
             if cmd.is_empty() {
@@ -119,6 +125,25 @@ fn parse_restore_args(args: Vec<String>) -> Result<RestoreOptions> {
         state_db,
         owner_card,
         force,
+    })
+}
+
+fn parse_verify_args(args: Vec<String>) -> Result<VerifyOptions> {
+    let mut backup_dir: Option<PathBuf> = None;
+    let mut i = 0;
+    while i < args.len() {
+        match args[i].as_str() {
+            "--backup-dir" => {
+                i += 1;
+                backup_dir = Some(PathBuf::from(require_value(&args, i, "--backup-dir")?));
+            }
+            flag => bail!("unknown flag for verify: {flag}"),
+        }
+        i += 1;
+    }
+
+    Ok(VerifyOptions {
+        backup_dir: backup_dir.ok_or_else(|| anyhow!("--backup-dir is required"))?,
     })
 }
 
@@ -223,6 +248,42 @@ fn run_restore(opts: RestoreOptions) -> Result<()> {
     Ok(())
 }
 
+fn run_verify(opts: VerifyOptions) -> Result<()> {
+    let manifest_path = opts.backup_dir.join("manifest.json");
+    let manifest: BackupManifest = serde_json::from_str(
+        &fs::read_to_string(&manifest_path)
+            .with_context(|| format!("failed reading {}", manifest_path.display()))?,
+    )?;
+
+    if manifest.schema_version != 1 {
+        bail!(
+            "unsupported manifest schema_version={}",
+            manifest.schema_version
+        );
+    }
+
+    let state_source = opts.backup_dir.join(&manifest.state_db_file);
+    let owner_source = opts.backup_dir.join(&manifest.owner_card_file);
+    if !state_source.exists() || !owner_source.exists() {
+        bail!("backup files missing in {}", opts.backup_dir.display());
+    }
+
+    let state_hash = sha256_file(&state_source)?;
+    let owner_hash = sha256_file(&owner_source)?;
+    if state_hash != manifest.state_db_sha256 {
+        bail!("state db checksum mismatch");
+    }
+    if owner_hash != manifest.owner_card_sha256 {
+        bail!("owner card checksum mismatch");
+    }
+
+    println!("backup_verified=true");
+    println!("backup_dir={}", opts.backup_dir.display());
+    println!("state_db_sha256={state_hash}");
+    println!("owner_card_sha256={owner_hash}");
+    Ok(())
+}
+
 fn snapshot_sqlite(source: &Path, destination: &Path) -> Result<()> {
     if destination.exists() {
         fs::remove_file(destination)
@@ -277,6 +338,6 @@ fn sha256_file(path: &Path) -> Result<String> {
 
 fn print_usage() {
     println!(
-        "Usage:\n  vvtv-admin backup [--state-db PATH] [--owner-card PATH] [--output-dir PATH]\n  vvtv-admin restore --backup-dir PATH [--state-db PATH] [--owner-card PATH] [--force]"
+        "Usage:\n  vvtv-admin backup [--state-db PATH] [--owner-card PATH] [--output-dir PATH]\n  vvtv-admin restore --backup-dir PATH [--state-db PATH] [--owner-card PATH] [--force]\n  vvtv-admin verify --backup-dir PATH"
     );
 }

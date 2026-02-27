@@ -31,6 +31,12 @@ Restore de metadados:
 scripts/vvtv-runbook.sh restore-metadata runtime/backups/<timestamp>
 ```
 
+Verificar backup sem restaurar:
+
+```bash
+scripts/vvtv-runbook.sh verify-backup runtime/backups/<timestamp>
+```
+
 Ativar emergencia:
 
 ```bash

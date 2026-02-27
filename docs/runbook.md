@@ -21,6 +21,8 @@
   - `scripts/vvtv-runbook.sh backup-metadata`
 - Restaurar snapshot:
   - `scripts/vvtv-runbook.sh restore-metadata runtime/backups/<timestamp>`
+- Verificar integridade antes de restore:
+  - `scripts/vvtv-runbook.sh verify-backup runtime/backups/<timestamp>`
 - Defaults:
   - `VVTV_STATE_DB_PATH=runtime/state/vvtv.db`
   - `VVTV_OWNER_CARD_PATH=config/owner_card.sample.yaml`

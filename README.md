@@ -84,6 +84,7 @@ Exemplos:
 - `scripts/vvtv-runbook.sh force-nightly`
 - `scripts/vvtv-runbook.sh export-audits`
 - `scripts/vvtv-runbook.sh backup-metadata`
+- `scripts/vvtv-runbook.sh verify-backup runtime/backups/<timestamp>`
 - `scripts/vvtv-runbook.sh restore-metadata runtime/backups/<timestamp>`
 - `scripts/vvtv-runbook.sh emergency-on`
 - `scripts/vvtv-runbook.sh emergency-off`

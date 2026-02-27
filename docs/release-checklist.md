@@ -18,6 +18,7 @@
 - [ ] `scripts/vvtv-runbook.sh force-nightly` succeeds
 - [ ] `scripts/vvtv-runbook.sh export-audits` returns a file path
 - [ ] `scripts/vvtv-runbook.sh backup-metadata` creates `runtime/backups/<timestamp>/manifest.json`
+- [ ] `scripts/vvtv-runbook.sh verify-backup <backup_dir>` validates checksums
 - [ ] `scripts/vvtv-runbook.sh restore-metadata <backup_dir>` succeeds in maintenance window
 - [ ] `scripts/vvtv-runbook.sh emergency-on` and `emergency-off` both succeed
 

@@ -14,6 +14,7 @@ Commands:
   force-nightly      Run orchestrator once with forced nightly maintenance
   export-audits      Force nightly and print latest audit export file
   backup-metadata    Snapshot state.db + OwnerCard with manifest checksum
+  verify-backup      Verify backup manifest/checksums without restoring
   restore-metadata   Restore state.db + OwnerCard from backup dir
   emergency-toggle   Toggle emergency mode via signed control API
   emergency-on       Ensure emergency mode is ON
@@ -76,6 +77,15 @@ restore_metadata() {
     --force)
 }
 
+verify_backup() {
+  local backup_dir="${1:-}"
+  if [[ -z "$backup_dir" ]]; then
+    echo "missing backup dir: usage scripts/vvtv-runbook.sh verify-backup <backup_dir>" >&2
+    exit 1
+  fi
+  (cd "$ROOT_DIR" && cargo run -q -p vvtv-admin -- verify --backup-dir "$backup_dir")
+}
+
 latest_export() {
   local export_dir="$ROOT_DIR/runtime/exports"
   if [[ ! -d "$export_dir" ]]; then
@@ -132,6 +142,9 @@ main() {
       ;;
     restore-metadata)
       restore_metadata "${2:-}"
+      ;;
+    verify-backup)
+      verify_backup "${2:-}"
       ;;
     emergency-toggle)
       emergency_toggle
