@@ -3,6 +3,7 @@ interface Env {
   CONTROL_TOKEN: string;
   CONTROL_SECRET: string;
   PUBLIC_STREAM_URL?: string;
+  PUBLIC_LOGO_URL?: string;
 }
 
 export default {
@@ -11,7 +12,7 @@ export default {
     const path = normalizePath(url.pathname);
 
     if (request.method === "GET" && path === "/") {
-      return new Response(publicPageHtml(env.PUBLIC_STREAM_URL), {
+      return new Response(publicPageHtml(env.PUBLIC_STREAM_URL, env.PUBLIC_LOGO_URL), {
         headers: {
           "content-type": "text/html; charset=utf-8",
           "cache-control": "public, max-age=120",
@@ -97,8 +98,9 @@ function normalizePath(pathname: string): string {
   return pathname;
 }
 
-function publicPageHtml(streamUrl?: string): string {
+function publicPageHtml(streamUrl?: string, logoUrl?: string): string {
   const src = streamUrl || "https://core.voulezvous.tv/hls/index.m3u8";
+  const logo = logoUrl || "https://api.voulezvous.tv/logo.png";
   return `<!doctype html>
 <html lang="en">
 <head>
@@ -190,6 +192,16 @@ function publicPageHtml(streamUrl?: string): string {
       text-shadow: 0 0 12px rgba(255, 22, 132, 0.45);
       user-select: none;
     }
+    .brand-logo {
+      width: min(56vw, 720px);
+      max-height: 18vh;
+      object-fit: contain;
+      display: block;
+      filter: drop-shadow(0 0 14px rgba(255, 22, 132, 0.35));
+      user-select: none;
+      -webkit-user-drag: none;
+      pointer-events: none;
+    }
     @media (max-width: 900px) {
       .page { padding: 2vh 2vw; }
       .player-shell { border-radius: 10px; }
@@ -206,7 +218,8 @@ function publicPageHtml(streamUrl?: string): string {
           <button class="play" id="playBtn" aria-label="Play">▶</button>
         </div>
       </div>
-      <div class="brand">voulezvous</div>
+      <img class="brand-logo" id="brandLogo" src="${escapeHtml(logo)}" alt="Voulezvous Lisboa" />
+      <div class="brand" id="brandFallback">voulezvous</div>
     </section>
   </main>
   <script src="https://cdn.jsdelivr.net/npm/hls.js@1.5.20/dist/hls.min.js"></script>
@@ -216,6 +229,8 @@ function publicPageHtml(streamUrl?: string): string {
     const video = document.getElementById("stream");
     const overlay = document.getElementById("overlay");
     const playBtn = document.getElementById("playBtn");
+    const brandLogo = document.getElementById("brandLogo");
+    const brandFallback = document.getElementById("brandFallback");
 
     function loadStream() {
       if (window.Hls && window.Hls.isSupported()) {
@@ -250,11 +265,30 @@ function publicPageHtml(streamUrl?: string): string {
     overlay.addEventListener("click", goLive);
     playBtn.addEventListener("click", goLive);
 
+    if (brandLogo && brandFallback) {
+      brandLogo.addEventListener("error", () => {
+        brandLogo.style.display = "none";
+        brandFallback.style.display = "block";
+      });
+      brandLogo.addEventListener("load", () => {
+        brandFallback.style.display = "none";
+      });
+    }
+
     loadStream();
     showOverlay(true);
   </script>
 </body>
 </html>`;
+}
+
+function escapeHtml(input: string): string {
+  return input
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll("\"", "&quot;")
+    .replaceAll("'", "&#39;");
 }
 
 async function verifyControlAuth(request: Request, env: Env, body: string): Promise<Response | null> {
