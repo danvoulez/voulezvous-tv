@@ -54,3 +54,9 @@ Toggle manual de emergencia:
 ```bash
 scripts/vvtv-runbook.sh emergency-toggle
 ```
+
+Canary com rollback automatico:
+
+```bash
+VVTV_CANARY_SOAK_HOURS=1 scripts/vvtv-canary.sh
+```

@@ -107,6 +107,20 @@ VVTV_SOAK_HOURS=0 VVTV_SOAK_MAX_SAMPLES=3 VVTV_SOAK_INTERVAL_SECS=10 scripts/vvt
 
 Checklist de release: `docs/release-checklist.md`.
 
+## Canary release
+
+Script de canary com rollback automatico:
+
+```bash
+VVTV_CANARY_SOAK_HOURS=1 scripts/vvtv-canary.sh
+```
+
+Dry run curto:
+
+```bash
+VVTV_CANARY_SOAK_HOURS=0 VVTV_CANARY_SOAK_MAX_SAMPLES=3 VVTV_CANARY_SOAK_INTERVAL_SECS=10 scripts/vvtv-canary.sh
+```
+
 ## Recovery (SQLite)
 
 - Estado persistido em `runtime/state/vvtv.db`

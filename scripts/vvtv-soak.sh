@@ -9,6 +9,7 @@ API_URL="${VVTV_API_URL:-http://127.0.0.1:7070}"
 OUT_DIR="${VVTV_SOAK_OUT_DIR:-$ROOT_DIR/runtime/soak/$(date +%Y%m%d-%H%M%S)}"
 RUN_ORCH="${VVTV_SOAK_RUN_ORCH:-1}"
 RUN_API="${VVTV_SOAK_RUN_API:-1}"
+BOOT_TIMEOUT_SECS="${VVTV_SOAK_BOOT_TIMEOUT_SECS:-90}"
 
 mkdir -p "$OUT_DIR"
 
@@ -50,11 +51,29 @@ start_processes() {
     ORCH_PID="$!"
   fi
 
-  sleep 2
+  wait_api_ready
 }
 
 require_tools() {
   command -v curl >/dev/null 2>&1 || { echo "missing curl" >&2; exit 1; }
+}
+
+wait_api_ready() {
+  if [[ "$RUN_API" != "1" ]]; then
+    return 0
+  fi
+
+  local elapsed=0
+  while (( elapsed < BOOT_TIMEOUT_SECS )); do
+    if curl -sSf "$API_URL/v1/status" >/dev/null 2>&1; then
+      return 0
+    fi
+    sleep 1
+    elapsed=$((elapsed + 1))
+  done
+
+  echo "control API did not become ready within ${BOOT_TIMEOUT_SECS}s" >&2
+  return 1
 }
 
 extract_json_num() {

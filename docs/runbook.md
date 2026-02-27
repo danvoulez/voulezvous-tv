@@ -27,3 +27,10 @@
   - `VVTV_STATE_DB_PATH=runtime/state/vvtv.db`
   - `VVTV_OWNER_CARD_PATH=config/owner_card.sample.yaml`
   - `VVTV_BACKUP_DIR=runtime/backups`
+
+## Canary e rollback
+- Rodar canary com backup automatico e rollback em falha:
+  - `VVTV_CANARY_SOAK_HOURS=1 scripts/vvtv-canary.sh`
+- Artefatos:
+  - `runtime/canary/<timestamp>/result.env`
+  - `runtime/canary/<timestamp>/soak/summary.txt`

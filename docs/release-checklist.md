@@ -33,6 +33,16 @@ VVTV_SOAK_HOURS=24 VVTV_SOAK_INTERVAL_SECS=60 scripts/vvtv-soak.sh
 - [ ] Verify `runtime/soak/<timestamp>/summary.txt` with `verdict=PASS`
 - [ ] Attach soak `summary.txt`, `status-samples.log`, `metrics-samples.log`, `alerts-samples.log` to release artifact
 
+## Canary gate
+
+- [ ] Execute canary with automatic rollback enabled:
+
+```bash
+VVTV_CANARY_SOAK_HOURS=1 scripts/vvtv-canary.sh
+```
+
+- [ ] Verify `runtime/canary/<timestamp>/result.env` has `status=PASS`
+
 ## Cloudflare integration
 
 - [ ] D1 migration applied (`cloudflare/worker/migrations/0001_init.sql`)
