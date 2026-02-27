@@ -9,3 +9,5 @@
 .env
 .env.*
 !.env.example
+# Local credential files (do not commit)
+runtime/env/
