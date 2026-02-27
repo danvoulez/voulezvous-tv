@@ -25,14 +25,15 @@ npx wrangler deploy
 
 Current production route:
 
-- `https://voulezvous.tv/vvtv/*`
-- health read: `GET https://voulezvous.tv/vvtv/v1/status`
+- `https://api.voulezvous.tv/*` (primary)
+- `https://voulezvous.tv/vvtv/*` (compat route)
+- health read: `GET https://api.voulezvous.tv/v1/status`
 
 ## LAB orchestrator -> Cloud sync
 
 Set environment in the LAB process:
 
-- `VVTV_CLOUDFLARE_BASE_URL=https://voulezvous.tv/vvtv`
+- `VVTV_CLOUDFLARE_BASE_URL=https://api.voulezvous.tv`
 - `VVTV_CLOUDFLARE_TOKEN=<token>`
 - `VVTV_CLOUDFLARE_SECRET=<secret>`
 

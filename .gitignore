@@ -6,3 +6,6 @@
 
 **/runtime/
 **/.wrangler/
+.env
+.env.*
+!.env.example

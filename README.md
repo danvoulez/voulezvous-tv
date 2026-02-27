@@ -74,7 +74,7 @@ Com webhook ativo:
 - em `VVTV_ENV != dev`, `VVTV_CLOUDFLARE_BASE_URL` e obrigatoria e, se configurada, token/secret tambem
 
 Valor atual de `VVTV_CLOUDFLARE_BASE_URL` em producao:
-- `https://voulezvous.tv/vvtv`
+- `https://api.voulezvous.tv`
 
 Com essas variaveis, o orquestrador publica snapshots/relatorios para o Worker.
 Setup completo: `docs/cloudflare-integration.md`.
