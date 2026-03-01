@@ -1,147 +1,358 @@
-# Plataforma Voulezvous Completa — Plano de Colocar em Pé (Prático)
+# Plataforma Voulezvous — Documento Completo de Execução (Go-Live)
 
-Este documento traduz os objetivos de **`voulezvous-tv.md`**, do **Engineering Doc modular multi-mode** e do **`vvtv-implementation-plan.md`** para uma execução pragmática em cima da codebase atual.
+Este documento consolida e operacionaliza a visão de plataforma do ecossistema Voulezvous: **VVTV Broadcast 24/7**, **Control Plane multi-mode**, **abstração de mídia** e **Web Shell único por manifest**. O objetivo é sair de uma visão arquitetural para um plano de implantação completo, com critérios claros de aceite, operação e evolução.
 
-## 1) Onde estamos hoje (estado real do repositório)
+---
 
-A base atual já cobre bem o núcleo de **VVTV Broadcast/LAB**:
+## 1) Escopo e objetivo de negócio
+
+A Plataforma Voulezvous deve operar em dois níveis integrados:
+
+1. **Broadcast contínuo (voulezvous.tv)**: usuário anônimo assiste conteúdo sem login, com alta disponibilidade e fallback automático.
+2. **Experiência interativa pós-login (Party e demais modes)**: presença, chat, convite para call privada, random/matching e futuros modos sem duplicar app ou backend.
+
+Resultado esperado:
+
+- Um único produto com múltiplos modos por composição.
+- Reuso real de contratos, SDK, políticas e componentes.
+- Evolução de novos modos por **configuração + manifest**, não por fork.
+
+---
+
+## 2) Estado atual da base (diagnóstico)
+
+### 2.1 O que já está forte
+
+A base atual cobre de forma sólida o núcleo local de operação VVTV:
 
 - Pipeline modular em Rust (`discovery -> planner -> fetcher -> prep -> queue -> stream -> curate -> nightly`).
-- Orquestrador contínuo + Control API + Store SQLite + auditoria/alertas.
-- Integração Cloudflare Worker (stub operacional para sync/status).
-- Scripts operacionais: runbook, soak, canary e promoção.
+- Orquestração operacional com API de controle, auditoria e storage SQLite.
+- Scripts de operação (runbook, canary, soak, promoção por fases).
+- Integração Cloudflare Worker para camada leve de sincronização/status.
 
-Em termos de plataforma completa (Party, Random, Private Call, Meeting, Presence, Session Orchestrator cloud), ainda faltam blocos de **Control Plane multi-mode** e **UI shell por manifests**.
+### 2.2 O que falta para “plataforma completa”
 
-## 2) Definição objetiva de “Plataforma completa em pé”
+Os principais gaps para sair de “broadcast robusto” e chegar à “plataforma multi-mode completa” são:
 
-Para considerar a plataforma "em pé" com risco controlado, precisamos de 4 trilhas simultâneas:
+- Control Plane cloud com **Session Orchestrator** canônico.
+- Serviço de **Presence** com heartbeat/TTL e limpeza consistente.
+- **Chat/Consent** e **Matching** integrados ao ciclo de sessão.
+- Frontend com **Shell único** e composição por manifests.
+- Contratos versionados e geração obrigatória de SDK/types.
 
-1. **Broadcast robusto (já avançado)**
-   - VVTV 24/7 estável (buffer, fallback, QA, runbook, canary).
-2. **Control Plane multi-mode mínimo viável**
-   - Session Orchestrator + Presence + Chat/Consent + Matching.
-3. **Media abstraction única**
-   - Interface `MediaProvider` por perfil (evitar hardcode por modo).
-4. **Frontend shell único por manifest**
-   - `/` viewer broadcast e login levando direto para Party.
+---
 
-## 3) Ordem de implementação recomendada (anti-retrabalho)
+## 3) Arquitetura-alvo (simples de operar, difícil de quebrar)
 
-A ordem abaixo respeita o plano por risco (`vvtv-implementation-plan.md`) e reduz custo de reescrita:
+## 3.1 Macrocamadas
 
-### Fase A — Fundação de contratos/config (curta e mandatória)
+1. **LAB Plane (local, Rust)**
+   - Descoberta, planejamento, fetch, QA, fila e streaming 24/7.
+   - É o motor de continuidade de transmissão.
 
-**Objetivo:** parar de tomar decisão estrutural no código e mover para schemas/config.
+2. **Control Plane (cloud, event-driven)**
+   - Identity/Auth, Presence, Session, Chat, Match, Moderation, Telemetry.
+   - É o cérebro de experiência interativa multi-mode.
 
-Entregáveis:
+3. **Media Plane (provider-agnostic)**
+   - WebRTC/HLS/ingest-egress via interface única.
+   - É o plano de execução audiovisual desacoplado de fornecedor.
 
-- Criar árvore de plataforma (sem quebrar o Rust atual):
+4. **Web App Shell (único frontend)**
+   - `/` broadcast viewer e `/party` pós-login.
+   - Outros modos por manifest + políticas.
+
+### 3.2 Princípios mandatórios
+
+- **Schemas primeiro**: API/eventos definidos em contrato versionado.
+- **SDK gerado**: frontend e serviços não “copiam type na mão”.
+- **Sessão é unidade de intenção**: mudança de modo cria nova sessão.
+- **Policy centralizada**: regras de permissão e segurança sem duplicação.
+- **Composição por capability**: modo declara capacidades, não reimplementa stack.
+
+---
+
+## 4) Modelo operacional de modos (manifest-driven)
+
+Cada modo é um manifesto versionado contendo:
+
+- `mode_id`
+- `routes`
+- `required_capabilities`
+- `ui_composition`
+- `policies`
+- `analytics_events`
+
+### 4.1 Modo Broadcast (viewer anônimo)
+
+- Rota padrão `/`.
+- MainPlayer (HLS) + topbar mínima.
+- CTA de login/entrada.
+- Sem painel administrativo para o usuário final.
+
+### 4.2 Modo Party (padrão pós-login)
+
+- Login redireciona diretamente para `/party`.
+- Stage principal + rail de presença + overlay de chat.
+- Convite para call privada passa por consentimento explícito.
+
+### 4.3 Modo Random
+
+- Entrada em fila, pareamento, sessão efêmera.
+- Skip encerra sessão e reinicia fluxo com cooldown.
+- Guardrails de abuso por política e reputação.
+
+---
+
+## 5) Contratos e domínio mínimo (v1)
+
+## 5.1 Entidades
+
+- **User**: identidade, reputação, flags de segurança.
+- **Presence**: estado online, modo, visibilidade, heartbeat.
+- **Session**: modo, estado (`creating|active|ending|ended|failed`), audience, parent_session.
+- **ChatThread**: escopo (`private_1to1|room|performer_room`) + moderação.
+- **MatchTicket**: fila, preferências, cooldown/quarentena.
+
+## 5.2 Contratos obrigatórios v1
+
+- `POST /sessions`
+- `POST /sessions/transition`
+- `POST /sessions/{id}/end`
+- `GET /sessions/{id}`
+- `POST /presence/set`
+- `GET /presence/party`
+- `POST /chat/thread`
+- `WS /chat/{thread_id}`
+- `POST /match/join`
+- `POST /match/skip`
+
+Todos os payloads devem nascer de schema versionado com validação runtime e geração de types.
+
+---
+
+## 6) Sequência de implementação (plano completo)
+
+## Fase 0 — Hardening Broadcast (curta, imediata)
+
+**Meta:** garantir base 24/7 como plataforma de confiança.
+
+Entregas:
+
+- Soak/canary estáveis.
+- Runbook validado para incidentes reais.
+- Alerting com dedupe e clear funcionando.
+
+## Fase A — Fundação de contratos e estrutura
+
+**Meta:** eliminar retrabalho estrutural.
+
+Entregas:
+
+- Estrutura dedicada:
   - `packages/schemas`
-  - `packages/config`
   - `packages/sdk`
-  - `apps/web` (shell)
+  - `packages/config`
   - `services/control-plane`
-- Definir schemas v1 para:
-  - Session (`create/transition/end/get`)
-  - Presence update
-  - Chat message + report
-  - Match found
-  - Consent request/response
-- Gerar types/SDK a partir de schema (CI deve falhar se divergir).
+  - `apps/web`
+- Schemas v1 de session/presence/chat/match/consent.
+- Geração de SDK/types e gate de CI para divergência.
 
-### Fase B — Session Orchestrator + MediaProvider
+## Fase B — Session Orchestrator + MediaProvider
 
-**Objetivo:** coração do sistema multi-mode.
+**Meta:** núcleo de orquestração multi-mode.
 
-Entregáveis:
+Entregas:
 
-- API de sessões com state machine (`creating -> active -> ending -> ended|failed`).
-- Transição sempre criando nova sessão (com `parent_session_id`).
-- `MediaProvider` interface desacoplada do provider concreto.
-- Primeira implementação provider: Cloudflare Realtime (ou adapter mock + staging).
+- State machine de sessão com invariantes fortes.
+- `transition` criando nova sessão com `parent_session_id`.
+- Interface `MediaProvider` + provider inicial (staging).
+- Perfis de mídia por uso (thumb, private call, random, broadcast).
 
-### Fase C — Presence + Chat/Consent
+## Fase C — Presence + Chat + Consent
 
-**Objetivo:** login em Party com interação real e confiável.
+**Meta:** experiência Party funcional ponta a ponta.
 
-Entregáveis:
+Entregas:
 
-- Presence com heartbeat/TTL (sem usuários fantasmas).
-- `ChatThread` único por escopo (`private_1to1`, `room`, `performer_room`).
-- Consent obrigatório para abrir `private_call`.
+- Heartbeat/TTL/cleanup de presença.
+- Chat thread único por escopo.
+- Consent chain obrigatória para call privada.
 
-### Fase D — Matching/Random com guardrails
+## Fase D — Matching/Random com proteção
 
-**Objetivo:** abrir Random sem explodir custo e sem abuso.
+**Meta:** random utilizável sem explosão de custo e abuso.
 
-Entregáveis:
+Entregas:
 
-- Fila/match/skip/cooldown configuráveis.
-- Quarentena de conta nova.
-- Rate limits e reconnect budget em config.
+- Queue/match/skip/cooldown configuráveis.
+- Quarentena de conta nova e rate limits por tier.
+- Telemetria de custo por sessão e por tentativa.
 
-### Fase E — Shell Web (viewer -> login -> party)
+## Fase E — Web Shell manifest-driven
 
-**Objetivo:** experiência produto com um app só.
+**Meta:** experiência unificada de produto.
 
-Entregáveis:
+Entregas:
 
-- `/` = broadcast viewer sem login.
-- login -> redirect direto para `/party`.
-- UI por composition/manifests (sem clonar app por modo).
+- Viewer `/` + login -> `/party`.
+- Componentes reutilizáveis (player, chat, rail, overlays).
+- Modes por manifest sem telas duplicadas.
 
-## 4) Mapeamento direto com a codebase atual (o que reaproveitar)
+## Fase F — Operação de Go-Live controlado
 
-- **Reaproveitar 100%** do pipeline Rust atual como LAB/Broadcast core.
-- **Manter** `vvtv-control-api` como base de controle operacional do LAB.
-- **Adicionar** control-plane multi-mode como novo bloco, sem destruir módulos existentes.
-- **Usar** `vvtv-store` e `vvtv-audit` como origem de eventos para telemetria e auditoria cruzada.
+**Meta:** abrir com segurança e rollback rápido.
 
-## 5) Backlog executável (primeiros 14 dias)
+Entregas:
+
+- Rollout em etapas (internal -> beta -> público parcial -> público total).
+- Gates automáticos de saúde por fase.
+- Plano de rollback e pós-incidente padronizados.
+
+---
+
+## 7) Critérios de aceite (Go/No-Go)
+
+A plataforma só passa para soft opening quando todos os critérios abaixo estiverem verdes:
+
+1. **Broadcast 24/7 estável** com buffer saudável e fallback testado.
+2. **Invariantes de sessão** sem órfãos e sem transição inválida.
+3. **Consentimento obrigatório** sem bypass em backend.
+4. **Guardrails de random** ativos (cooldown, rate-limit, quarentena).
+5. **Shell único** em produção com manifests para modos.
+6. **Telemetria mínima** por modo disponível em dashboard operacional.
+7. **Runbook de incidente** testado em simulação de falha.
+
+---
+
+## 8) SLOs, métricas e observabilidade
+
+### 8.1 SLOs iniciais sugeridos
+
+- Uptime de reprodução broadcast: **>= 99.9%**.
+- Tempo de recuperação de sessão (falha não fatal): **< 10s**.
+- Match-to-connect no random (p50): **< 5s**.
+- Erro de transição de sessão: **< 0.5%**.
+
+### 8.2 KPIs de produto
+
+- Conversão viewer -> login.
+- Conversão login -> primeira interação (chat/call/random).
+- Taxa de sucesso de consentimento.
+- Retenção em Party e reincidência de abuso.
+
+### 8.3 Telemetria mandatória por modo
+
+- `mode_entered`
+- `mode_exited`
+- `session_created`
+- `session_transitioned`
+- `media_error`
+- `policy_denied`
+
+---
+
+## 9) Segurança, compliance e confiança
+
+- Consentimento explícito para chamadas privadas.
+- Políticas centralizadas para report, block, ban e quarentena.
+- Audit trail completo de decisões automáticas e ações humanas.
+- Segredos e tokens segregados por ambiente.
+- Bloqueio de credenciais de desenvolvimento em produção.
+
+---
+
+## 10) Riscos críticos e mitigação
+
+1. **Duplicação de app por modo**
+   - Mitigação: shell único + manifest + lint de fronteiras.
+
+2. **Lock-in de provedor de mídia**
+   - Mitigação: `MediaProvider` único e testes por adapter.
+
+3. **Custos invisíveis em presence/random**
+   - Mitigação: caps por tier, viewport gating, budget de reconnect.
+
+4. **Quebra de confiança (calls sem consent)**
+   - Mitigação: validação server-side obrigatória + testes de bypass.
+
+5. **Incidentes sem rastreabilidade**
+   - Mitigação: auditoria estruturada + export de evidências por incidente.
+
+---
+
+## 11) Plano de rollout (recomendado)
+
+### Etapa 1 — Internal alpha
+
+- Time interno e contas de teste.
+- Foco em estabilidade e falhas de fluxo crítico.
+
+### Etapa 2 — Beta fechado
+
+- Grupo pequeno de usuários reais.
+- Observação de custo, QoS e comportamento de moderação.
+
+### Etapa 3 — Público parcial
+
+- Tráfego fracionado com feature flags.
+- Rollback automático se violar SLO.
+
+### Etapa 4 — Público amplo
+
+- Escala gradual com monitoramento de KPIs de retenção.
+- Revisões semanais de policy + ajustes finos.
+
+---
+
+## 12) Backlog objetivo (30 dias)
 
 ### Semana 1
 
-1. Criar `packages/schemas` com contrato mínimo (session/presence/chat/match/consent).
-2. Pipeline de geração de types SDK (TS) e check de CI.
-3. Stub de `services/control-plane` com rotas vazias, mas tipadas por schema.
-4. Documento de `Mode Manifest v1` (Party, Random, Broadcast).
+- Estrutura de schemas/sdk/control-plane/web shell criada.
+- Contratos v1 publicados e validados.
+- Gates de CI para schema e geração de SDK.
 
 ### Semana 2
 
-1. Implementar Session Orchestrator em staging.
-2. Implementar adapter `MediaProvider` com profile resolution.
-3. Testes de invariantes de transição/heartbeat/cleanup.
-4. Publicar primeiro `apps/web` shell com `/` + `/party` (sem features complexas).
+- Session orchestrator funcional em staging.
+- MediaProvider com provider inicial e testes básicos.
+- Presença heartbeat/TTL ativa.
 
-## 6) Critérios de aceite (go/no-go de plataforma)
+### Semana 3
 
-A plataforma só entra em "soft opening" quando TODOS abaixo estiverem verdes:
+- Chat + consent + convite para private call completos.
+- Random com join/match/skip/cooldown.
+- Telemetria mínima end-to-end.
 
-1. **Broadcast 24/7** com soak pass e canary pass.
-2. **Session invariants** passando (sem sessão órfã; transição cria nova sessão).
-3. **Consent chain** sem bypass possível.
-4. **Random guardrails** ativos e validados (cooldown/quarentena/rate limits).
-5. **Shell único** operando com manifests sem duplicação de app.
+### Semana 4
 
-## 7) Riscos críticos (e mitigação)
+- Shell web com `/` + `/party` + manifest de random.
+- Hardening operacional (runbook e rollback ensaiados).
+- Início de beta fechado.
 
-- **Risco:** duplicar frontend/backend por modo.
-  - **Mitigação:** modo só nasce via manifest + capability.
-- **Risco:** provider lock-in e lógica de mídia espalhada.
-  - **Mitigação:** tudo atrás de `MediaProvider`.
-- **Risco:** custo silencioso em Presence/Random.
-  - **Mitigação:** viewport gating, caps por tier, telemetria de custo por sessão.
-- **Risco:** confiança quebrada por call sem consent.
-  - **Mitigação:** invariante de backend + testes bloqueando bypass.
+---
 
-## 8) Próximo passo imediato (ação concreta)
+## 13) Definição de pronto (DoD) por modo
 
-Ordem para começar amanhã sem travar:
+Um modo só é considerado pronto quando:
 
-1. Abrir branch de trabalho "platform-phase-a".
-2. Subir `packages/schemas` + geração de types.
-3. Conectar CI para falhar em divergência de schema/types.
-4. Só então iniciar Session Orchestrator.
+- Não cria endpoint fora de schema.
+- Não duplica type nem validação fora da fonte de verdade.
+- Reusa componentes de UI kit.
+- Usa policy central e telemetria padrão.
+- Passa testes de fluxo feliz + anti-bypass + falha controlada.
 
-Se quiser, no próximo passo eu preparo o **pacote Fase A pronto para commit** (estrutura de pastas + schemas v1 iniciais + scripts de geração + validação em CI) para você já entrar em execução.
+---
+
+## 14) Próximo passo prático (ação imediata)
+
+Sequência recomendada para início sem retrabalho:
+
+1. Criar branch de execução de plataforma.
+2. Subir Fase A (schemas + geração + gates de CI).
+3. Implementar Session Orchestrator (Fase B).
+4. Acoplar Presence/Chat/Consent (Fase C).
+5. Entregar shell `/` e `/party` em staging (Fase E).
+
+Com essa ordem, a plataforma evolui de forma incremental, auditável e com risco controlado, sem sacrificar o funcionamento contínuo do broadcast atual.
