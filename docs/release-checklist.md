@@ -1,5 +1,16 @@
 # Release Checklist (Sprint 3)
 
+## Fase 1 (Go Live) — execução consolidada
+
+- [ ] Executar gate automatizado da Fase 1:
+
+```bash
+scripts/vvtv-phase1-go-live.sh
+```
+
+- [ ] Verificar `runtime/go-live/phase1/<timestamp>/summary.txt` com `status=PASS`
+- [ ] Anexar artefatos (`status.json`, `alerts.json`, `metrics.prom`, logs) ao pacote de release
+
 ## Build and tests
 
 - [ ] `cargo test` green

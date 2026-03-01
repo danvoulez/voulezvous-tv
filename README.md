@@ -116,6 +116,14 @@ VVTV_SOAK_HOURS=0 VVTV_SOAK_MAX_SAMPLES=3 VVTV_SOAK_INTERVAL_SECS=10 scripts/vvt
 
 Checklist de release: `docs/release-checklist.md`.
 
+Go-live consolidado da Fase 1:
+
+```bash
+scripts/vvtv-phase1-go-live.sh
+```
+
+O script gera artefatos em `runtime/go-live/phase1/<timestamp>/`.
+
 ## Canary release
 
 Script de canary com rollback automatico:
