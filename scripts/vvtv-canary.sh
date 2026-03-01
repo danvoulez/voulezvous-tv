@@ -17,6 +17,7 @@ PROMOTE_STRICT="${VVTV_CANARY_PROMOTE_STRICT:-1}"
 PROMOTE_BOOTSTRAP_API="${VVTV_CANARY_PROMOTE_BOOTSTRAP_API:-1}"
 API_URL="${VVTV_API_URL:-http://127.0.0.1:7070}"
 PROMOTE_BOOT_TIMEOUT_SECS="${VVTV_CANARY_PROMOTE_BOOT_TIMEOUT_SECS:-90}"
+STATE_DB_PATH="${VVTV_STATE_DB_PATH:-runtime/state/vvtv.db}"
 
 PROMOTION_STATUS="SKIPPED"
 PROMOTION_RECORD=""
@@ -28,6 +29,18 @@ require_cmd() {
     echo "missing required command: $1" >&2
     exit 1
   fi
+}
+
+bootstrap_state_db_if_missing() {
+  if [[ -f "$ROOT_DIR/$STATE_DB_PATH" ]]; then
+    return 0
+  fi
+
+  echo "state db missing at $STATE_DB_PATH; running orchestrator once to bootstrap"
+  (
+    cd "$ROOT_DIR"
+    VVTV_RUN_ONCE=1 cargo run -q -p vvtv-orchestrator
+  )
 }
 
 run_backup() {
@@ -153,6 +166,8 @@ main() {
   require_cmd curl
   require_cmd grep
   require_cmd tee
+
+  bootstrap_state_db_if_missing
 
   run_backup
 

@@ -1734,6 +1734,7 @@ dependencies = [
 name = "vvtv-planner"
 version = "0.1.0"
 dependencies = [
+ "chrono",
  "vvtv-types",
 ]
 
