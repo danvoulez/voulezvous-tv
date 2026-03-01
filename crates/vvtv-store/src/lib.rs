@@ -459,9 +459,14 @@ mod tests {
 
     use super::{SchedulerCursors, StateStore};
 
+    fn open_test_store(path: &str) -> StateStore {
+        let _ = std::fs::remove_file(path);
+        StateStore::open(path).expect("open store")
+    }
+
     #[test]
     fn persists_and_recovers_state() {
-        let mut store = StateStore::open("runtime/state/test-vvtv.db").expect("open store");
+        let mut store = open_test_store("runtime/state/test-vvtv.db");
 
         let plan = PlanItem {
             plan_id: "plan-1".to_string(),
@@ -543,8 +548,7 @@ mod tests {
 
     #[test]
     fn export_and_retention_work() {
-        let mut store =
-            StateStore::open("runtime/state/test-vvtv-retention.db").expect("open store");
+        let mut store = open_test_store("runtime/state/test-vvtv-retention.db");
         let old_event = AuditEvent {
             event_id: "old-e".to_string(),
             ts: Utc::now() - Duration::days(120),
@@ -583,7 +587,7 @@ mod tests {
 
     #[test]
     fn scheduler_cursors_roundtrip() {
-        let mut store = StateStore::open("runtime/state/test-vvtv-cursors.db").expect("open store");
+        let mut store = open_test_store("runtime/state/test-vvtv-cursors.db");
         let cursors = SchedulerCursors {
             last_discovery_hour: Some("2026-02-27-20".to_string()),
             last_commit_slot: Some("2026-02-27-20-01".to_string()),
@@ -600,7 +604,7 @@ mod tests {
 
     #[test]
     fn scheduler_lock_enforces_single_owner() {
-        let mut store = StateStore::open("runtime/state/test-vvtv-lock.db").expect("open store");
+        let mut store = open_test_store("runtime/state/test-vvtv-lock.db");
         assert!(
             store
                 .acquire_scheduler_lock("scheduler-main", "owner-a", 60)
@@ -623,8 +627,7 @@ mod tests {
 
     #[test]
     fn alert_state_roundtrip() {
-        let mut store =
-            StateStore::open("runtime/state/test-vvtv-alert-state.db").expect("open store");
+        let mut store = open_test_store("runtime/state/test-vvtv-alert-state.db");
         let now = Utc::now();
         store
             .upsert_alert_state("BUFFER_CRITICAL", true, Some(now))
