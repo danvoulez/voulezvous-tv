@@ -8,5 +8,8 @@ license.workspace = true
 [dependencies]
 vvtv-types = { path = "../vvtv-types" }
 
+[dev-dependencies]
+chrono.workspace = true
+
 [lints]
 workspace = true
