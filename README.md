@@ -116,6 +116,8 @@ VVTV_SOAK_HOURS=0 VVTV_SOAK_MAX_SAMPLES=3 VVTV_SOAK_INTERVAL_SECS=10 scripts/vvt
 
 Checklist de release: `docs/release-checklist.md`.
 
+Plano para colocar a plataforma completa em pé: `docs/plataforma-voulezvous-go-live.md`.
+
 ## Canary release
 
 Script de canary com rollback automatico:
