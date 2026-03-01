@@ -124,6 +124,22 @@ scripts/vvtv-phase1-go-live.sh
 
 O script gera artefatos em `runtime/go-live/phase1/<timestamp>/`.
 
+Go-live consolidado da Fase 2 (runbook + backup/restore + soak curto por default):
+
+```bash
+scripts/vvtv-phase2-go-live.sh
+```
+
+O script gera artefatos em `runtime/go-live/phase2/<timestamp>/`.
+
+Go-live consolidado da Fase 3 (canary + promote, com opcional de checagem Cloudflare):
+
+```bash
+scripts/vvtv-phase3-go-live.sh
+```
+
+O script gera artefatos em `runtime/go-live/phase3/<timestamp>/`.
+
 ## Canary release
 
 Script de canary com rollback automatico:

@@ -11,6 +11,28 @@ scripts/vvtv-phase1-go-live.sh
 - [ ] Verificar `runtime/go-live/phase1/<timestamp>/summary.txt` com `status=PASS`
 - [ ] Anexar artefatos (`status.json`, `alerts.json`, `metrics.prom`, logs) ao pacote de release
 
+## Fase 2 (Go Live) — operações, segurança e soak
+
+- [ ] Executar gate automatizado da Fase 2:
+
+```bash
+scripts/vvtv-phase2-go-live.sh
+```
+
+- [ ] Verificar `runtime/go-live/phase2/<timestamp>/summary.txt` com `status=PASS`
+- [ ] Anexar artefatos de backup/restore, emergency toggle e soak ao pacote de release
+
+## Fase 3 (Go Live) — canary + promotion
+
+- [ ] Executar gate automatizado da Fase 3:
+
+```bash
+scripts/vvtv-phase3-go-live.sh
+```
+
+- [ ] Verificar `runtime/go-live/phase3/<timestamp>/summary.txt` com `status=PASS`
+- [ ] Confirmar `canary/result.env` com `status=PASS` e `promotion_status=PROMOTED`
+
 ## Build and tests
 
 - [ ] `cargo test` green
