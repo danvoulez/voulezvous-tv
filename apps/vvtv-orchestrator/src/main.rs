@@ -30,7 +30,9 @@ async fn main() -> Result<()> {
     let owner_card_store =
         OwnerCardStore::load_from_path(Path::new("config/owner_card.sample.yaml"))?;
     let owner_card = owner_card_store.current();
-    let mut store = StateStore::open("runtime/state/vvtv.db")?;
+    let state_db_path =
+        std::env::var("VVTV_STATE_DB").unwrap_or_else(|_| "runtime/state/vvtv.db".to_string());
+    let mut store = StateStore::open(&state_db_path)?;
     let audit = InMemoryAuditSink::new();
     let cloud_agent = build_cloud_agent()?;
     let instance_id = uuid::Uuid::new_v4().to_string();

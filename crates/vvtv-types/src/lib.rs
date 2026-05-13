@@ -15,6 +15,12 @@ pub struct OwnerCard {
 }
 
 impl OwnerCard {
+    /// Validates required owner-card invariants before runtime use.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error message when mandatory policy fields are empty or
+    /// numeric safety limits are inconsistent.
     pub fn validate(&self) -> Result<(), String> {
         if self.schema_version == 0 {
             return Err("schema_version must be >= 1".to_string());

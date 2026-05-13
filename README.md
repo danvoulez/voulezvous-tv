@@ -5,8 +5,16 @@ Implementacao do blueprint VVTV com pipeline 24/7 mockado/real hibrido ponta a p
 ## Quickstart
 
 ```bash
+scripts/vvtv-smoke.sh
+```
+
+O smoke test compila, roda toda a suite Rust e executa um ciclo unico do orquestrador com `VVTV_RUN_ONCE=1`. Ao final ele confirma que o playlist HLS foi gerado em `runtime/hls/index.m3u8`.
+
+Para rodar os servicos manualmente:
+
+```bash
 cargo test
-cargo run -p vvtv-orchestrator
+VVTV_RUN_ONCE=1 cargo run -p vvtv-orchestrator
 cargo run -p vvtv-control-api
 ```
 
