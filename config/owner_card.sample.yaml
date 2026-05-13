@@ -7,6 +7,7 @@ search_policy:
   allowlist_domains:
     - "example-source-a.com"
     - "example-source-b.com"
+    - "local"
   blacklist_domains:
     - "bad-domain.com"
   blocked_keywords:

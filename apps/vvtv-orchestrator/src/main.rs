@@ -30,7 +30,9 @@ async fn main() -> Result<()> {
     let owner_card_store =
         OwnerCardStore::load_from_path(Path::new("config/owner_card.sample.yaml"))?;
     let owner_card = owner_card_store.current();
-    let mut store = StateStore::open("runtime/state/vvtv.db")?;
+    let state_db_path =
+        std::env::var("VVTV_STATE_DB").unwrap_or_else(|_| "runtime/state/vvtv.db".to_string());
+    let mut store = StateStore::open(&state_db_path)?;
     let audit = InMemoryAuditSink::new();
     let cloud_agent = build_cloud_agent()?;
     let instance_id = uuid::Uuid::new_v4().to_string();
@@ -203,7 +205,8 @@ fn run_discovery_window(
     store: &mut StateStore,
     audit: &InMemoryAuditSink,
 ) -> Result<()> {
-    let discovered = DiscoveryEngine::discover(owner_card, &seed_discovery_inputs());
+    let inputs = discovery_inputs()?;
+    let discovered = DiscoveryEngine::discover(owner_card, &inputs);
     let day = Planner::build_day(owner_card, discovered);
     let mut all_plans = day.scheduled;
     all_plans.extend(day.reserves);
@@ -412,6 +415,14 @@ fn record_audit(
     audit.append(event.clone());
     store.append_audit(&event)?;
     Ok(())
+}
+
+fn discovery_inputs() -> Result<Vec<DiscoveryInput>> {
+    if let Ok(path) = std::env::var("VVTV_DISCOVERY_DIR") {
+        return DiscoveryEngine::inputs_from_directory(path);
+    }
+
+    Ok(seed_discovery_inputs())
 }
 
 fn seed_discovery_inputs() -> Vec<DiscoveryInput> {

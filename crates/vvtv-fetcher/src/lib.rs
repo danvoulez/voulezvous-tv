@@ -1,4 +1,7 @@
 use std::collections::HashSet;
+use std::fs;
+use std::io::Read;
+use std::path::{Path, PathBuf};
 
 use chrono::{DateTime, Duration, Utc};
 use uuid::Uuid;
@@ -30,8 +33,10 @@ impl Fetcher {
             if !eligible_for_commit(&item, cutoff, ctx) {
                 continue;
             }
-            used_plan_ids.insert(item.plan_id.clone());
-            assets.push(to_asset(&item));
+            if let Some(asset) = to_asset(&item) {
+                used_plan_ids.insert(item.plan_id.clone());
+                assets.push(asset);
+            }
             if assets.len() >= target_items {
                 return assets;
             }
@@ -43,8 +48,10 @@ impl Fetcher {
             {
                 continue;
             }
-            used_plan_ids.insert(reserve.plan_id.clone());
-            assets.push(to_asset(&reserve));
+            if let Some(asset) = to_asset(&reserve) {
+                used_plan_ids.insert(reserve.plan_id.clone());
+                assets.push(asset);
+            }
             if assets.len() >= target_items {
                 break;
             }
@@ -58,22 +65,74 @@ fn eligible_for_commit(item: &PlanItem, cutoff: DateTime<Utc>, ctx: &FetchContex
     item.discovered_at <= cutoff && !ctx.broken_urls.contains(&item.source_url)
 }
 
-fn to_asset(plan: &PlanItem) -> AssetItem {
+fn to_asset(plan: &PlanItem) -> Option<AssetItem> {
     let vertical = plan
         .visual_features
         .iter()
         .any(|feature| feature.to_lowercase().contains("vertical"));
     let (width, height) = if vertical { (720, 1280) } else { (1280, 720) };
+    let asset_id = Uuid::new_v4().to_string();
+    let local_source = resolve_local_source(&plan.source_url);
+    let (local_path, checksum) = if let Some(source) = local_source {
+        match stage_local_asset(&asset_id, &source) {
+            Ok(staged) => staged,
+            Err(_) => return None,
+        }
+    } else {
+        (
+            format!("/var/vvtv/assets/{}.mp4", plan.plan_id),
+            format!("chk-{}", &plan.plan_id[..plan.plan_id.len().min(8)]),
+        )
+    };
 
-    AssetItem {
-        asset_id: Uuid::new_v4().to_string(),
+    Some(AssetItem {
+        asset_id,
         plan_id: plan.plan_id.clone(),
-        local_path: format!("/var/vvtv/assets/{}.mp4", plan.plan_id),
-        checksum: format!("chk-{}", &plan.plan_id[..plan.plan_id.len().min(8)]),
+        local_path,
+        checksum,
         resolution: Resolution { width, height },
         audio_lufs: -19.0,
         qa_status: QaStatus::Pending,
+    })
+}
+
+fn resolve_local_source(source_url: &str) -> Option<PathBuf> {
+    if let Some(path) = source_url.strip_prefix("file://") {
+        return Some(PathBuf::from(path));
     }
+
+    let path = PathBuf::from(source_url);
+    if path.exists() { Some(path) } else { None }
+}
+
+fn stage_local_asset(asset_id: &str, source: &Path) -> std::io::Result<(String, String)> {
+    let extension = source
+        .extension()
+        .and_then(|ext| ext.to_str())
+        .unwrap_or("mp4");
+    let target_dir = Path::new("runtime").join("assets");
+    fs::create_dir_all(&target_dir)?;
+    let target = target_dir.join(format!("{asset_id}.{extension}"));
+    fs::copy(source, &target)?;
+    let checksum = checksum_file(&target)?;
+    Ok((target.to_string_lossy().to_string(), checksum))
+}
+
+fn checksum_file(path: &Path) -> std::io::Result<String> {
+    let mut file = fs::File::open(path)?;
+    let mut hash = 0xcbf2_9ce4_8422_2325_u64;
+    let mut buffer = [0_u8; 8192];
+    loop {
+        let n = file.read(&mut buffer)?;
+        if n == 0 {
+            break;
+        }
+        for byte in &buffer[..n] {
+            hash ^= u64::from(*byte);
+            hash = hash.wrapping_mul(0x0000_0100_0000_01b3);
+        }
+    }
+    Ok(format!("fnv64-{hash:016x}"))
 }
 
 #[cfg(test)]
@@ -127,6 +186,28 @@ mod tests {
         let assets =
             Fetcher::commit_t_minus_4h(&card, now, vec![future], vec![], &FetchContext::default());
         assert!(assets.is_empty());
+    }
+
+    #[test]
+    fn commit_stages_local_file_assets() {
+        let card = sample_card(20);
+        let now = Utc::now();
+        let root = std::env::temp_dir().join(format!("vvtv-fetcher-{}", Uuid::new_v4()));
+        fs::create_dir_all(&root).unwrap();
+        let source = root.join("clip.mp4");
+        fs::write(&source, b"fake-local-media").unwrap();
+        let mut plan = sample_plan("local", now);
+        plan.source_url = format!("file://{}", source.display());
+
+        let assets =
+            Fetcher::commit_t_minus_4h(&card, now, vec![plan], vec![], &FetchContext::default());
+
+        assert_eq!(assets.len(), 1);
+        assert!(assets[0].local_path.starts_with("runtime/assets/"));
+        assert!(Path::new(&assets[0].local_path).exists());
+        assert_ne!(assets[0].checksum, "chk-local");
+
+        fs::remove_dir_all(root).unwrap();
     }
 
     fn sample_card(buffer_target_minutes: u16) -> OwnerCard {

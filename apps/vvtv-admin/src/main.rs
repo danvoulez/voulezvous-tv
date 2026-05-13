@@ -42,11 +42,12 @@ struct VerifyOptions {
 fn main() -> Result<()> {
     let mut args = env::args().skip(1);
     let cmd = args.next().unwrap_or_default();
+    let args = args.collect::<Vec<_>>();
 
     match cmd.as_str() {
-        "backup" => run_backup(parse_backup_args(args.collect())?),
-        "restore" => run_restore(parse_restore_args(args.collect())?),
-        "verify" => run_verify(parse_verify_args(args.collect())?),
+        "backup" => run_backup(&parse_backup_args(&args)?),
+        "restore" => run_restore(&parse_restore_args(&args)?),
+        "verify" => run_verify(&parse_verify_args(&args)?),
         _ => {
             print_usage();
             if cmd.is_empty() {
@@ -58,7 +59,7 @@ fn main() -> Result<()> {
     }
 }
 
-fn parse_backup_args(args: Vec<String>) -> Result<BackupOptions> {
+fn parse_backup_args(args: &[String]) -> Result<BackupOptions> {
     let mut state_db = PathBuf::from("runtime/state/vvtv.db");
     let mut owner_card = PathBuf::from("config/owner_card.sample.yaml");
     let mut output_dir = PathBuf::from("runtime/backups");
@@ -68,15 +69,15 @@ fn parse_backup_args(args: Vec<String>) -> Result<BackupOptions> {
         match args[i].as_str() {
             "--state-db" => {
                 i += 1;
-                state_db = PathBuf::from(require_value(&args, i, "--state-db")?);
+                state_db = PathBuf::from(require_value(args, i, "--state-db")?);
             }
             "--owner-card" => {
                 i += 1;
-                owner_card = PathBuf::from(require_value(&args, i, "--owner-card")?);
+                owner_card = PathBuf::from(require_value(args, i, "--owner-card")?);
             }
             "--output-dir" => {
                 i += 1;
-                output_dir = PathBuf::from(require_value(&args, i, "--output-dir")?);
+                output_dir = PathBuf::from(require_value(args, i, "--output-dir")?);
             }
             flag => bail!("unknown flag for backup: {flag}"),
         }
@@ -90,7 +91,7 @@ fn parse_backup_args(args: Vec<String>) -> Result<BackupOptions> {
     })
 }
 
-fn parse_restore_args(args: Vec<String>) -> Result<RestoreOptions> {
+fn parse_restore_args(args: &[String]) -> Result<RestoreOptions> {
     let mut backup_dir: Option<PathBuf> = None;
     let mut state_db = PathBuf::from("runtime/state/vvtv.db");
     let mut owner_card = PathBuf::from("config/owner_card.sample.yaml");
@@ -101,15 +102,15 @@ fn parse_restore_args(args: Vec<String>) -> Result<RestoreOptions> {
         match args[i].as_str() {
             "--backup-dir" => {
                 i += 1;
-                backup_dir = Some(PathBuf::from(require_value(&args, i, "--backup-dir")?));
+                backup_dir = Some(PathBuf::from(require_value(args, i, "--backup-dir")?));
             }
             "--state-db" => {
                 i += 1;
-                state_db = PathBuf::from(require_value(&args, i, "--state-db")?);
+                state_db = PathBuf::from(require_value(args, i, "--state-db")?);
             }
             "--owner-card" => {
                 i += 1;
-                owner_card = PathBuf::from(require_value(&args, i, "--owner-card")?);
+                owner_card = PathBuf::from(require_value(args, i, "--owner-card")?);
             }
             "--force" => {
                 force = true;
@@ -128,14 +129,14 @@ fn parse_restore_args(args: Vec<String>) -> Result<RestoreOptions> {
     })
 }
 
-fn parse_verify_args(args: Vec<String>) -> Result<VerifyOptions> {
+fn parse_verify_args(args: &[String]) -> Result<VerifyOptions> {
     let mut backup_dir: Option<PathBuf> = None;
     let mut i = 0;
     while i < args.len() {
         match args[i].as_str() {
             "--backup-dir" => {
                 i += 1;
-                backup_dir = Some(PathBuf::from(require_value(&args, i, "--backup-dir")?));
+                backup_dir = Some(PathBuf::from(require_value(args, i, "--backup-dir")?));
             }
             flag => bail!("unknown flag for verify: {flag}"),
         }
@@ -153,7 +154,7 @@ fn require_value(args: &[String], index: usize, flag: &str) -> Result<String> {
         .ok_or_else(|| anyhow!("missing value for {flag}"))
 }
 
-fn run_backup(opts: BackupOptions) -> Result<()> {
+fn run_backup(opts: &BackupOptions) -> Result<()> {
     if !opts.state_db.exists() {
         bail!("state db not found: {}", opts.state_db.display());
     }
@@ -196,7 +197,7 @@ fn run_backup(opts: BackupOptions) -> Result<()> {
     Ok(())
 }
 
-fn run_restore(opts: RestoreOptions) -> Result<()> {
+fn run_restore(opts: &RestoreOptions) -> Result<()> {
     let manifest_path = opts.backup_dir.join("manifest.json");
     let manifest: BackupManifest = serde_json::from_str(
         &fs::read_to_string(&manifest_path)
@@ -248,7 +249,7 @@ fn run_restore(opts: RestoreOptions) -> Result<()> {
     Ok(())
 }
 
-fn run_verify(opts: VerifyOptions) -> Result<()> {
+fn run_verify(opts: &VerifyOptions) -> Result<()> {
     let manifest_path = opts.backup_dir.join("manifest.json");
     let manifest: BackupManifest = serde_json::from_str(
         &fs::read_to_string(&manifest_path)
