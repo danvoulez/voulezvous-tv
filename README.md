@@ -18,6 +18,19 @@ VVTV_RUN_ONCE=1 cargo run -p vvtv-orchestrator
 cargo run -p vvtv-control-api
 ```
 
+
+### Ingest local de midia
+
+Para testar com arquivos reais sem depender do seed demo, coloque videos (`.mp4`, `.mov`, `.mkv`, `.webm`) em uma pasta e aponte o orquestrador para ela:
+
+```bash
+mkdir -p runtime/ingest-local/noir
+cp /caminho/para/seu-video.mp4 runtime/ingest-local/noir/
+VVTV_RUN_ONCE=1 VVTV_DISCOVERY_DIR=runtime/ingest-local cargo run -p vvtv-orchestrator
+```
+
+Arquivos locais entram como dominio `local`, ja incluido no OwnerCard sample, sao copiados para `runtime/assets/`, passam pelo Prep/QA e geram HLS em `runtime/hls/index.m3u8`.
+
 Ambiente:
 - `VVTV_ENV=dev` (default)
 - Em `VVTV_ENV != dev`, o sistema aplica fail-fast para segredos obrigatorios.

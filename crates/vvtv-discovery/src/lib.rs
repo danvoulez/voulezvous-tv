@@ -1,3 +1,7 @@
+use std::fs;
+use std::path::{Path, PathBuf};
+
+use anyhow::{Context, Result};
 use chrono::Utc;
 use uuid::Uuid;
 use vvtv_types::{DiscoveryInput, OwnerCard, PlanItem, PlanState};
@@ -5,6 +9,28 @@ use vvtv_types::{DiscoveryInput, OwnerCard, PlanItem, PlanState};
 pub struct DiscoveryEngine;
 
 impl DiscoveryEngine {
+    /// Builds discovery candidates from local media files under a watched directory.
+    ///
+    /// This is the production-friendly local ingest path: operators can drop files into
+    /// `VVTV_DISCOVERY_DIR` and the orchestrator will turn them into normal discovery
+    /// candidates without relying on the hard-coded demo seed list.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error when the directory cannot be read or a child entry cannot be inspected.
+    pub fn inputs_from_directory(root: impl AsRef<Path>) -> Result<Vec<DiscoveryInput>> {
+        let root = root.as_ref();
+        let mut files = Vec::new();
+        collect_media_files(root, &mut files)
+            .with_context(|| format!("failed scanning discovery dir {}", root.display()))?;
+        files.sort();
+
+        files
+            .into_iter()
+            .map(|path| local_file_input(root, &path))
+            .collect()
+    }
+
     #[must_use]
     pub fn discover(owner_card: &OwnerCard, candidates: &[DiscoveryInput]) -> Vec<PlanItem> {
         let mut accepted: Vec<PlanItem> = candidates
@@ -111,7 +137,6 @@ fn has_blocked_keyword(owner_card: &OwnerCard, candidate: &DiscoveryInput) -> bo
         .map(|k| k.to_lowercase())
         .any(|keyword| title.contains(&keyword) || tags.contains(&keyword))
 }
-
 fn is_allowlisted(owner_card: &OwnerCard, source_domain: &str) -> bool {
     owner_card
         .search_policy
@@ -128,7 +153,68 @@ fn is_blocked_domain(owner_card: &OwnerCard, source_domain: &str) -> bool {
         .any(|domain| source_domain.ends_with(domain))
 }
 
+fn collect_media_files(dir: &Path, out: &mut Vec<PathBuf>) -> std::io::Result<()> {
+    for entry in fs::read_dir(dir)? {
+        let entry = entry?;
+        let path = entry.path();
+        let file_name = entry.file_name();
+        if file_name.to_string_lossy().starts_with('.') {
+            continue;
+        }
+        if path.is_dir() {
+            collect_media_files(&path, out)?;
+        } else if is_supported_media_file(&path) {
+            out.push(path);
+        }
+    }
+    Ok(())
+}
+
+fn is_supported_media_file(path: &Path) -> bool {
+    path.extension()
+        .and_then(|ext| ext.to_str())
+        .map(|ext| {
+            matches!(
+                ext.to_lowercase().as_str(),
+                "mp4" | "m4v" | "mov" | "mkv" | "webm"
+            )
+        })
+        .unwrap_or(false)
+}
+
+fn local_file_input(root: &Path, path: &Path) -> Result<DiscoveryInput> {
+    let canonical = path
+        .canonicalize()
+        .with_context(|| format!("failed canonicalizing {}", path.display()))?;
+    let relative = path.strip_prefix(root).unwrap_or(path);
+    let title = path
+        .file_stem()
+        .and_then(|stem| stem.to_str())
+        .unwrap_or("local-media")
+        .replace(['_', '-'], " ");
+    let parent_theme = relative
+        .parent()
+        .and_then(|parent| parent.file_name())
+        .and_then(|name| name.to_str())
+        .filter(|name| !name.trim().is_empty())
+        .unwrap_or("local");
+
+    Ok(DiscoveryInput {
+        source_url: format!("file://{}", canonical.display()),
+        title,
+        duration_sec: 600,
+        theme_tags: vec![parent_theme.to_lowercase(), "local".to_string()],
+        visual_features: vec!["local-file".to_string()],
+        quality_signals: vec!["local-ingest".to_string(), "clean-audio".to_string()],
+        hd_confirmed: true,
+    })
+}
+
 fn extract_domain(url: &str) -> String {
+    if url.starts_with("file://") {
+        return "local".to_string();
+    }
+
     url.split("//")
         .nth(1)
         .and_then(|rest| rest.split('/').next())
@@ -160,6 +246,46 @@ mod tests {
 
         let accepted = DiscoveryEngine::discover(&card, &[blocked]);
         assert!(accepted.is_empty());
+    }
+
+    #[test]
+    fn local_directory_ingest_builds_file_candidates() {
+        let root = std::env::temp_dir().join(format!("vvtv-discovery-{}", Uuid::new_v4()));
+        let themed = root.join("noir");
+        fs::create_dir_all(&themed).unwrap();
+        fs::write(themed.join("night_session.mp4"), b"fake-media").unwrap();
+        fs::write(themed.join("notes.txt"), b"ignore").unwrap();
+
+        let inputs = DiscoveryEngine::inputs_from_directory(&root).unwrap();
+
+        assert_eq!(inputs.len(), 1);
+        assert!(inputs[0].source_url.starts_with("file://"));
+        assert_eq!(inputs[0].title, "night session");
+        assert!(inputs[0].theme_tags.contains(&"noir".to_string()));
+
+        fs::remove_dir_all(root).unwrap();
+    }
+
+    #[test]
+    fn file_urls_use_local_allowlist_domain() {
+        let mut card = sample_owner_card();
+        card.search_policy
+            .allowlist_domains
+            .push("local".to_string());
+        let input = DiscoveryInput {
+            source_url: "file:///tmp/vvtv-local.mp4".to_string(),
+            title: "Local".to_string(),
+            duration_sec: 600,
+            theme_tags: vec!["local".to_string()],
+            visual_features: vec![],
+            quality_signals: vec![],
+            hd_confirmed: true,
+        };
+
+        let discovered = DiscoveryEngine::discover(&card, &[input]);
+
+        assert_eq!(discovered.len(), 1);
+        assert_eq!(discovered[0].source_domain, "local");
     }
 
     #[test]

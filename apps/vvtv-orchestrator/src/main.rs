@@ -205,7 +205,8 @@ fn run_discovery_window(
     store: &mut StateStore,
     audit: &InMemoryAuditSink,
 ) -> Result<()> {
-    let discovered = DiscoveryEngine::discover(owner_card, &seed_discovery_inputs());
+    let inputs = discovery_inputs()?;
+    let discovered = DiscoveryEngine::discover(owner_card, &inputs);
     let day = Planner::build_day(owner_card, discovered);
     let mut all_plans = day.scheduled;
     all_plans.extend(day.reserves);
@@ -414,6 +415,14 @@ fn record_audit(
     audit.append(event.clone());
     store.append_audit(&event)?;
     Ok(())
+}
+
+fn discovery_inputs() -> Result<Vec<DiscoveryInput>> {
+    if let Ok(path) = std::env::var("VVTV_DISCOVERY_DIR") {
+        return DiscoveryEngine::inputs_from_directory(path);
+    }
+
+    Ok(seed_discovery_inputs())
 }
 
 fn seed_discovery_inputs() -> Vec<DiscoveryInput> {
